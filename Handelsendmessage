@@ -1,0 +1,117 @@
+const handleSendMessage = useCallback(async (text: string) => {
+  if (!text.trim()) return;
+
+  const newUserMessage: Message = {
+    id: Date.now().toString(),
+    text,
+    sender: 'user',
+    timestamp: Date.now(),
+  };
+
+  setIsLoading(true);
+  let currentConversationId = activeConversationId;
+  let updatedConversations = [...conversations];
+
+  if (!currentConversationId) {
+    const newConversation: Conversation = {
+      id: Date.now().toString(),
+      title: text.substring(0, 20) + (text.length > 20 ? '...' : ''),
+      timestamp: Date.now(),
+      messages: [newUserMessage],
+    };
+    updatedConversations = [newConversation, ...updatedConversations];
+    currentConversationId = newConversation.id;
+    setActiveConversationId(newConversation.id);
+  } else {
+    updatedConversations = updatedConversations.map(conv =>
+      conv.id === currentConversationId
+        ? { ...conv, messages: [...conv.messages, newUserMessage], timestamp: Date.now() }
+        : conv
+    );
+  }
+
+  updatedConversations.sort((a, b) => b.timestamp - a.timestamp);
+  setConversations(updatedConversations);
+  setChatInputValue('');
+
+  try {
+    const backendResponse = await fetch('http://localhost:9000/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: text, model: selectedModel }),
+    });
+
+    if (!backendResponse.ok) {
+      const errorData = await backendResponse.text();
+      throw new Error(`HTTP error! status: ${backendResponse.status}, message: ${errorData}`);
+    }
+
+    const contentType = backendResponse.headers.get('Content-Type');
+
+    if (contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      const blob = await backendResponse.blob();
+      const fileUrl = URL.createObjectURL(blob);
+
+      const fileMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'Here is your result:',
+        sender: 'ai',
+        timestamp: Date.now(),
+        modelUsed: selectedModel,
+        fileUrl,
+        fileName: 'query_results.xlsx',
+      };
+
+      setConversations(prevConvs =>
+        prevConvs.map(conv =>
+          conv.id === currentConversationId
+            ? { ...conv, messages: [...conv.messages, fileMessage], timestamp: Date.now() }
+            : conv
+        ).sort((a, b) => b.timestamp - a.timestamp)
+      );
+    } else {
+      const aiResponseText: string = await backendResponse.text();
+
+      const newAiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: aiResponseText,
+        sender: 'ai',
+        timestamp: Date.now(),
+        modelUsed: selectedModel,
+      };
+
+      setConversations(prevConvs =>
+        prevConvs.map(conv =>
+          conv.id === currentConversationId
+            ? { ...conv, messages: [...conv.messages, newAiMessage], timestamp: Date.now() }
+            : conv
+        ).sort((a, b) => b.timestamp - a.timestamp)
+      );
+    }
+  } catch (error: any) {
+    console.error('Error sending message to backend:', error);
+    toast({
+      title: "API Error",
+      description: `Sorry, I couldn't get a response. ${error.message}`,
+      variant: "destructive",
+    });
+
+    const errorAiMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      text: "Sorry, I couldn't connect to the AI. Please check if the backend server is running or try again later.",
+      sender: 'ai',
+      timestamp: Date.now(),
+      modelUsed: selectedModel,
+    };
+
+    setConversations(prevConvs =>
+      prevConvs.map(conv =>
+        conv.id === currentConversationId
+          ? { ...conv, messages: [...conv.messages, errorAiMessage], timestamp: Date.now() }
+          : conv
+      ).sort((a, b) => b.timestamp - a.timestamp)
+    );
+  } finally {
+    setIsLoading(false);
+  }
+}, [activeConversationId, conversations, selectedModel, toast]);

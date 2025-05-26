@@ -42,6 +42,20 @@ export function ChatInput({ value, onValueChange, onSendMessage, isLoading }: Ch
 
   return (
     <form onSubmit={handleSubmit} className="relative flex flex-col gap-2 p-4 border-t border-border bg-background">
+      {file && (
+        <div className="flex items-center justify-between text-sm px-2 py-1 rounded bg-muted text-muted-foreground border border-border">
+          <span className="truncate">{file.name}</span>
+          <button
+            type="button"
+            onClick={() => setFile(null)}
+            className="ml-2 text-muted-foreground hover:text-red-500"
+            aria-label="Remove file"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       <div className="flex items-start gap-2">
         <Textarea
           value={value}
@@ -78,20 +92,6 @@ export function ChatInput({ value, onValueChange, onSendMessage, isLoading }: Ch
           </Button>
         </div>
       </div>
-
-      {file && (
-        <div className="flex items-center justify-between text-sm px-2 py-1 rounded bg-muted text-muted-foreground border border-border">
-          <span className="truncate">{file.name}</span>
-          <button
-            type="button"
-            onClick={() => setFile(null)}
-            className="ml-2 text-muted-foreground hover:text-red-500"
-            aria-label="Remove file"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      )}
 
       <input
         ref={fileInputRef}

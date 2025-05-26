@@ -1,0 +1,14 @@
+// …inside your non-user (AI) message rendering, right after the ReactMarkdown block:
+
+{message.fileUrl && (
+  <div className="px-3 pb-2">
+    <a
+      href={message.fileUrl}
+      download={message.fileName}
+      className="inline-flex items-center space-x-1 text-sm font-medium text-primary underline hover:text-primary/80"
+    >
+      <Download size={16} />
+      <span>Download {message.fileName}</span>
+    </a>
+  </div>
+)}

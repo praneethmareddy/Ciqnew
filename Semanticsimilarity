@@ -1,0 +1,41 @@
+import pandas as pd
+from sentence_transformers import SentenceTransformer, util
+
+# File paths
+file1 = 'file1.xlsx'
+file2 = 'file2.xlsx'
+
+# Load the Excel files
+df1 = pd.read_excel(file1)
+df2 = pd.read_excel(file2)
+
+# OPTION A: If column names are in the headers
+columns1 = df1.columns.tolist()
+columns2 = df2.columns.tolist()
+
+# OPTION B: If column names are inside a specific column (uncomment and adjust)
+# columns1 = df1['Column_Name'].dropna().astype(str).tolist()
+# columns2 = df2['Column_Name'].dropna().astype(str).tolist()
+
+# Load sentence transformer model
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Encode columns into embeddings
+embeddings1 = model.encode(columns1, convert_to_tensor=True)
+embeddings2 = model.encode(columns2, convert_to_tensor=True)
+
+# Compute similarity
+cosine_sim = util.cos_sim(embeddings1, embeddings2)
+
+# Find best matches
+matches = []
+for i, col1 in enumerate(columns1):
+    best_idx = cosine_sim[i].argmax().item()
+    best_col2 = columns2[best_idx]
+    score = cosine_sim[i][best_idx].item()
+    matches.append((col1, best_col2, round(score, 4)))
+
+# Print results
+print("Column A -> Most similar in B (score):")
+for a, b, score in matches:
+    print(f"{a} -> {b} (score: {score})")
